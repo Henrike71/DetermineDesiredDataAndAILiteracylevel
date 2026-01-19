@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Literacy Decision Tree</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; padding: 20px; max-width: 650px; margin: auto; background: #f4f7f6; }
+        .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h1 { color: #2c3e50; font-size: 1.5rem; margin-bottom: 10px; }
+        h2 { color: #34495e; font-size: 1.2rem; margin-top: 0; }
+        .intro { color: #555; font-size: 0.95rem; }
+        .question { margin-bottom: 20px; font-weight: bold; color: #34495e; font-size: 1.05rem; }
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; transition: 0.3s; }
+        .btn-yes { background: #27ae60; color: white; flex: 1; }
+        .btn-no { background: #e74c3c; color: white; flex: 1; }
+        .btn-back { background: #95a5a6; color: white; width: 100%; margin-top: 10px; }
+        .btn-reset { background: #34495e; color: white; width: 100%; margin-top: 20px; }
+        button:hover { opacity: 0.8; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .result { padding: 20px; border-radius: 8px; text-align: center; }
+        .level-1 { background: #d5dbdb; color: #2c3e50; }
+        .level-2 { background: #aed6f1; color: #1b4f72; }
+        .level-3 { background: #f9e79f; color: #7d6608; }
+        .level-4 { background: #a9dfbf; color: #145a32; }
+        .hidden { display: none; }
+        .custom-output { margin-top: 15px; padding: 15px; background: rgba(255,255,255,0.3); border-radius: 6px; font-style: italic; }
+        .custom-output a { color: inherit; text-decoration: underline; font-weight: bold; }
+        .level-info { margin-top: 20px; padding: 15px; background: #ecf0f1; border-radius: 6px; text-align: left; font-size: 0.9rem; }
+        .level-info h3 { margin-top: 0; color: #2c3e50; font-size: 1rem; }
+        .level-info ul { margin: 5px 0; padding-left: 20px; }
+        .yes-answers { margin-top: 15px; padding: 15px; background: #e8f8f5; border-left: 4px solid #27ae60; border-radius: 4px; text-align: left; }
+        .yes-answers h3 { margin-top: 0; color: #145a32; font-size: 0.95rem; }
+        .yes-answers ul { margin: 5px 0; padding-left: 20px; font-size: 0.85rem; }
+        .progress { font-size: 0.8rem; color: #7f8c8d; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="card" id="intro-screen">
+    <h1>🧠 AI Literacy Checker</h1>
+    <p class="intro">
+        This tool helps you determine your AI literacy level based on core competencies in data and AI. 
+        Answer 11 short questions about your daily work activities.
+    </p>
+    <p class="intro" style="font-size: 0.85rem; color: #7f8c8d;">
+        <strong>Source:</strong> Documentation from the Government Academy for Digitalization and Information Management
+    </p>
+    <p class="intro">
+        <strong>Note:</strong> Focus on what your <em>role requires</em>, not what you <em>could potentially do</em>.
+    </p>
+    <button class="btn-yes" onclick="startQuiz()" style="width: 100%; margin-top: 15px;">Start the test</button>
+</div>
+
+<div class="card hidden" id="app">
+    <h1>AI Literacy Checker</h1>
+    <div id="quiz">
+        <p class="progress" id="progress"></p>
+        <p class="question" id="question-text"></p>
+        <div class="btn-group">
+            <button class="btn-yes" onclick="handleAnswer(true)">Yes</button>
+            <button class="btn-no" onclick="handleAnswer(false)">No</button>
+        </div>
+        <button class="btn-back" id="btn-back" onclick="goBack()" disabled>← Previous question</button>
+    </div>
+    
+    <div id="result-area" class="hidden">
+        <div id="result-box" class="result">
+            <h2 id="level-name"></h2>
+            <p id="level-desc"></p>
+            <div class="custom-output" id="custom-message"></div>
+        </div>
+        
+        <div class="level-info">
+            <h3>📚 Explanation of all levels:</h3>
+            <ul>
+                <li><strong>Level 1 - AI-aware:</strong> Basic knowledge, using AI for personal productivity</li>
+                <li><strong>Level 2 - AI-proficient:</strong> Critical user who validates output in daily practice</li>
+                <li><strong>Level 3 - AI-advanced:</strong> Strategic advisor bridging technology and policy</li>
+                <li><strong>Level 4 - AI-expert:</strong> Technical builder who develops and manages systems</li>
+            </ul>
+        </div>
+        
+        <div class="yes-answers" id="yes-answers-box">
+            <h3>✅ Questions you answered "Yes" to:</h3>
+            <ul id="yes-list"></ul>
+        </div>
+        
+        <button class="btn-reset" onclick="resetQuiz()">🔄 Start over</button>
+    </div>
+</div>
+
+<script>
+    const questions = [
+        { id: 1, text: "Are you expected to substantively review AI output or data analyses (from yourself and/or others) for reliability and correctness, beyond just text assistance or brainstorming?", block: 1 },
+        { id: 2, text: "Is it part of your tasks to identify opportunities for AI implementation and formulate substantive assignments for specialists?", block: 1 },
+        { id: 3, text: "Do you need to independently collect information from various sources and analyze or compare it using software (such as Excel/Power BI) for your work?", block: 1 },
+        { id: 4, text: "Does your organization require you to formally apply risk instruments (such as privacy assessments or impact analyses) to digital systems?", block: 1 },
+        { id: 5, text: "Is your primary role the technical design, implementation, and/or management of data and AI systems or language models?", block: 2 },
+        { id: 6, text: "Does writing and/or modifying computer code (e.g., in Python, R, or SQL) belong to your daily activities to build solutions?", block: 2 },
+        { id: 7, text: "Are you required to investigate at an IT-technical level whether algorithms contain statistical errors or unwanted biases?", block: 2 },
+        { id: 8, text: "Do you fulfill a structural bridge function where you translate colleagues' needs to technical builders and help them understand systems?", block: 3 },
+        { id: 9, text: "Are you expected to advise at a strategic level on the safe and responsible handling of data and AI?", block: 3 },
+        { id: 10, text: "Are you responsible for DETERMINING THE RULES for the quality, storage, and sharing of information?", block: 3 },
+        { id: 11, text: "Do you need to make complex analyses understandable for management and advise on the complete lifecycle of AI solutions?", block: 3 }
+    ];
+
+    let currentStep = 0;
+    let answerHistory = [];
+    let yesAnswers = [];
+
+    function startQuiz() {
+        document.getElementById('intro-screen').classList.add('hidden');
+        document.getElementById('app').classList.remove('hidden');
+        updateView();
+    }
+
+    function updateView() {
+        const q = questions[currentStep];
+        document.getElementById('progress').innerText = `Question ${currentStep + 1} of ${questions.length}`;
+        document.getElementById('question-text').innerText = q.text;
+        document.getElementById('btn-back').disabled = (currentStep === 0);
+    }
+
+    function handleAnswer(isYes) {
+        const q = questions[currentStep];
+        answerHistory.push({ step: currentStep, answer: isYes });
+        
+        if (isYes) {
+            yesAnswers.push(q.text);
+        }
+
+        if (q.block === 1) {
+            if (isYes) {
+                currentStep = 4; 
+            } else if (currentStep === 3) {
+                showResult(1);
+                return;
+            } else {
+                currentStep++;
+            }
+        } 
+        else if (q.block === 2) {
+            if (isYes) {
+                showResult(4);
+                return;
+            } else if (currentStep === 6) {
+                currentStep++;
+            } else {
+                currentStep++;
+            }
+        }
+        else if (q.block === 3) {
+            if (isYes) {
+                showResult(3);
+                return;
+            } else if (currentStep === 10) {
+                showResult(2);
+                return;
+            } else {
+                currentStep++;
+            }
+        }
+        
+        updateView();
+    }
+
+    function goBack() {
+        if (answerHistory.length === 0) return;
+        
+        const lastAnswer = answerHistory.pop();
+        
+        if (lastAnswer.answer) {
+            yesAnswers.pop();
+        }
+        
+        currentStep = lastAnswer.step;
+        updateView();
+    }
+
+    function showResult(level) {
+        document.getElementById('quiz').classList.add('hidden');
+        document.getElementById('result-area').classList.remove('hidden');
+        const box = document.getElementById('result-box');
+        const name = document.getElementById('level-name');
+        const desc = document.getElementById('level-desc');
+        const custom = document.getElementById('custom-message');
+
+        box.className = 'result level-' + level;
+        
+        if (level === 1) {
+            name.innerText = "Level 1: AI-aware";
+            desc.innerText = "Your role requires basic understanding and supportive use of AI for personal productivity.";
+            custom.innerHTML = "Know the basics, relax. Your time will come! 😊";
+        } else if (level === 2) {
+            name.innerText = "Level 2: AI-proficient";
+            desc.innerText = "You are a critical user who validates technology substantively in daily practice.";
+            custom.innerHTML = "You're the critical eye ensuring quality. Indispensable! 👁️<br><br>Make your needs known. <a href='https://bibliotheeknlda.libguides.com/AI-tools_buiten_IV' target='_blank'>Start with the libguide</a> and AI workshops for targeted AI tools.";
+        } else if (level === 3) {
+            name.innerText = "Level 3: AI-advanced";
+            desc.innerText = "You advise strategically, oversee governance, and bridge the gap between technology and policy.";
+            custom.innerHTML = "The strategic link between thinking and doing. Respect! 🎁<br><br>Share your stories, keep innovating!";
+        } else if (level === 4) {
+            name.innerText = "Level 4: AI-expert";
+            desc.innerText = "You are the technical builder who develops, codes, and technically manages the systems.";
+            custom.innerHTML = "Without you, no data and AI tools. Thanks for your contribution! 🛠️";
+        }
+        
+        const yesList = document.getElementById('yes-list');
+        yesList.innerHTML = '';
+        if (yesAnswers.length === 0) {
+            yesList.innerHTML = '<li><em>You did not answer "Yes" to any question.</em></li>';
+        } else {
+            yesAnswers.forEach(answer => {
+                const li = document.createElement('li');
+                li.innerText = answer;
+                yesList.appendChild(li);
+            });
+        }
+    }
+
+    function resetQuiz() {
+        currentStep = 0;
+        answerHistory = [];
+        yesAnswers = [];
+        document.getElementById('quiz').classList.remove('hidden');
+        document.getElementById('result-area').classList.add('hidden');
+        document.getElementById('intro-screen').classList.remove('hidden');
+        document.getElementById('app').classList.add('hidden');
+    }
+
+    if (document.getElementById('app').classList.contains('hidden') === false) {
+        updateView();
+    }
+</script>
+</body>
+</html>
